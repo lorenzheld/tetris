@@ -6,77 +6,125 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.math.MathUtils;
-import com.badlogic.gdx.scenes.scene2d.Actor;
-import com.badlogic.gdx.scenes.scene2d.Stage;
-import com.badlogic.gdx.scenes.scene2d.actions.Actions;
-import com.badlogic.gdx.scenes.scene2d.ui.Skin;
-import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
-import com.badlogic.gdx.scenes.scene2d.ui.Window;
-import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.ScreenUtils;
-import com.badlogic.gdx.utils.viewport.FitViewport;
 
-import java.awt.*;
-
-/** {@link com.badlogic.gdx.ApplicationListener} implementation shared by all platforms. */
 public class Main extends ApplicationAdapter {
-    private Stage stage;
-    private Skin skin;
-    private ShapeRenderer shape;
-    private float x = 100, y = 100, speed = 200;
+
+    private ShapeRenderer shapeRenderer;
+    private int[][] matrix;
+    private int cellSize = 30; // Größe einer Zelle in Pixeln
+
+    GameMatrix gameMatrix = new GameMatrix();
+
 
     @Override
     public void create() {
+        shapeRenderer = new ShapeRenderer();
 
-        shape = new ShapeRenderer();
-
-        // Stage erstellen mit einer Viewport-Größe (z. B. 800 × 600)
-        stage = new Stage(new FitViewport(800, 600));
-
-        // Input-Verarbeitung auf die Stage legen (falls du Buttons hast)
-        Gdx.input.setInputProcessor(stage);
-
-
-        GameMatrix GameMatrix = new GameMatrix();
-
-        GameMatrix.getMatrix();
-
-
-
+        // Matrix aus deiner GameMatrix-Klasse holen
+        gameMatrix.newLBlock();
+        gameMatrix.blockInMatrix(2, 2);
+        matrix = gameMatrix.getMatrix();   // <--- wichtig: zuweisen
 
     }
 
     @Override
     public void render() {
-        ScreenUtils.clear(0.4f, 0.2f, 0.9f, 1);
 
-        float delta = Gdx.graphics.getDeltaTime();
-        ScreenUtils.clear(0.2f, 0.6f, 1f, 1);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN)) {
+            System.out.println("DOWN gedrückt!");
 
-        if (Gdx.input.isKeyPressed(Input.Keys.LEFT))  x -= speed * delta;
-        if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) x += speed * delta;
-        if (Gdx.input.isKeyPressed(Input.Keys.UP))    y += speed * delta;
-        if (Gdx.input.isKeyPressed(Input.Keys.DOWN))  y -= speed * delta;
+            gameMatrix.blockInMatrix(1, 0);
+            matrix = gameMatrix.getMatrix();   // <--- wichtig: zuweisen
 
-        shape.begin(ShapeRenderer.ShapeType.Filled);
-        shape.setColor(Color.RED);
-        shape.rect(x, y, 50, 50);
-        shape.end();
-    }
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.UP)) {
+            System.out.println("Up gedrückt!");
 
-    @Override
-    public void resize(int width, int height) {
-        // If the window is minimized on a desktop (LWJGL3) platform, width and height are 0, which causes problems.
-        // In that case, we don't resize anything, and wait for the window to be a normal size before updating.
-        if(width <= 0 || height <= 0) return;
+            gameMatrix.turnBlock();
+            matrix = gameMatrix.getMatrix();   // <--- wichtig: zuweisen
 
-        stage.getViewport().update(width, height);
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) {
+            System.out.println("Left gedrückt!");
+
+            gameMatrix.moveBlock(-1);
+
+            matrix = gameMatrix.getMatrix();   // <--- wichtig: zuweisen
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) {
+            System.out.println("Right gedrückt!");
+
+            gameMatrix.moveBlock(1);
+
+            matrix = gameMatrix.getMatrix();   // <--- wichtig: zuweisen
+        }
+
+        ScreenUtils.clear(0f, 0f, 0f, 1f);
+
+        if (matrix == null) return;
+
+        int rows = matrix.length;
+        int cols = matrix[0].length;
+
+        // 1) Zellen gefüllt zeichnen (mit Farben je nach Wert)
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+
+        for (int y = 0; y < rows; y++) {
+            for (int x = 0; x < cols; x++) {
+                int flippedY = rows-y-1;
+                int value = matrix[flippedY][x];
+
+
+                if (value == 0) continue; // 0 = leer, nichts zeichnen
+
+                switch (value) {
+                    case 1:
+                        shapeRenderer.setColor(Color.RED);
+                        break;
+                    case 2:
+                        shapeRenderer.setColor(Color.BLUE);
+                        break;
+                    case 3:
+                        shapeRenderer.setColor(Color.GREEN);
+                        break;
+                    default:
+                        shapeRenderer.setColor(Color.GRAY);
+                        break;
+                }
+
+                shapeRenderer.rect(
+                    x * cellSize,
+                    (y) * cellSize,
+                    cellSize,
+                    cellSize
+                );
+            }
+        }
+
+        shapeRenderer.end();
+
+        // 2) Rasterlinien drüber zeichnen
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+        shapeRenderer.setColor(Color.WHITE);
+
+        // Vertikale Linien
+        for (int x = 0; x <= cols; x++) {
+            float px = x * cellSize;
+            shapeRenderer.line(px, 0, px, rows * cellSize);
+        }
+
+        // Horizontale Linien
+        for (int y = 0; y <= rows; y++) {
+            float py = y * cellSize;
+            shapeRenderer.line(0, py, cols * cellSize, py);
+        }
+
+        shapeRenderer.end();
     }
 
     @Override
     public void dispose() {
-        stage.dispose();
-        skin.dispose();
+        shapeRenderer.dispose();
     }
 }
